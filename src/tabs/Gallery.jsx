@@ -1,93 +1,97 @@
-import { Component } from 'react';
-
 import * as ImageService from 'service/image-service';
 import { Button, SearchForm, Grid, GridItem, Text, CardItem } from 'components';
 import { Loader } from 'components/Loader/Loader';
 import { Modal } from 'components/Modal/Modal';
+import { useEffect, useState } from 'react';
 
-export class Gallery extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    isEmpty: false,
-    isLoadMore: false,
-    error: null,
-    isLoading: false,
-    src: '',
-  };
+export const Gallery = () => {
+  // state = {
+  //   query: '',
+  //   images: [],
+  //   page: 1,
+  //   isEmpty: false,
+  //   isLoadMore: false,
+  //   error: null,
+  //   isLoading: false,
+  //   src: '',
+  // };
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { query, page } = this.state;
-    const prevQuery = prevState.query;
-    const prevPage = prevState.page;
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [isEmpty, setIsEmpty] = useState(false);
+  const [isLoadMore, setIsLoadMore] = useState(false);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [src, setSrc] = useState('');
 
-    if (prevQuery === query && prevPage === page) {
+  useEffect(() => {
+    if (!query) {
       return;
     }
-    this.setState({ isLoading: true });
-    try {
-      const { photos, total_results } = await ImageService.getImages(
-        query,
-        page
-      );
+    const fecthPhotos = async () => {
+      setIsLoading(true);
+      try {
+        const { photos, total_results } = await ImageService.getImages(
+          query,
+          page
+        );
 
-      if (!total_results) {
-        this.setState({ isEmpty: true });
-        return;
+        if (!total_results) {
+          setIsEmpty(true);
+          return;
+        }
+        setImages(prevState => [...prevState, ...photos]);
+        setIsLoadMore(page < Math.ceil(total_results / 15));
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setIsLoading(false);
       }
-      this.setState(prevState => ({
-        images: [...prevState.images, ...photos],
-        isLoadMore: page < Math.ceil(total_results / 15),
-      }));
-    } catch (error) {
-      this.setState({ error: error.message });
-    } finally {
-      this.setState({ isLoading: false });
-    }
-  }
+    };
+    fecthPhotos();
+  }, [query, page]);
 
-  handleSubmit = query => {
-    this.setState({ query, images: [], page: 1, isEmpty: false });
+  const handleSubmit = query => {
+    setQuery(query);
+    setImages([]);
+    setPage(1);
+    setIsEmpty(false);
   };
 
-  handleClick = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleClick = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  openModal = src => {
-    this.setState({ src });
+  const openModal = src => {
+    setSrc(src);
   };
 
-  render() {
-    const { images, isEmpty, isLoadMore, error, isLoading, src } = this.state;
-
-    return (
-      <>
-        <SearchForm handleSubmit={this.handleSubmit} />
-        <Grid>
-          {images.map(({ id, avg_color, alt, src }) => (
-            <GridItem key={id}>
-              <CardItem color={avg_color}>
-                <img
-                  src={src.large}
-                  alt={alt}
-                  onClick={() => {
-                    this.openModal(src.large);
-                  }}
-                />
-              </CardItem>
-            </GridItem>
-          ))}
-        </Grid>
-        {isEmpty && (
-          <Text textAlign="center">Sorry. There are no images ... 😭</Text>
-        )}
-        {error && <Text textAlign="center">{error}😭</Text>}
-        {isLoadMore && <Button onClick={this.handleClick}>Load more</Button>}
-        {isLoading && <Loader />}
-        {src && <Modal src={src} onClose={this.openModal} />}
-      </>
-    );
-  }
-}
+  return (
+    <>
+      <SearchForm handleSubmit={handleSubmit} />
+      <Grid>
+        {images.map(({ id, avg_color, alt, src }) => (
+          <GridItem key={id}>
+            <CardItem color={avg_color}>
+              <img
+                src={src.large}
+                alt={alt}
+                onClick={() => {
+                  openModal(src.large);
+                }}
+              />
+            </CardItem>
+          </GridItem>
+        ))}
+      </Grid>
+      {isEmpty && (
+        <Text textAlign="center">Sorry. There are no images ... 😭</Text>
+      )}
+      {error && <Text textAlign="center">{error}😭</Text>}
+      {isLoadMore && <Button onClick={handleClick}>Load more</Button>}
+      {isLoading && <Loader />}
+      {src && <Modal src={src} onClose={openModal} />}
+    </>
+  );
+};
