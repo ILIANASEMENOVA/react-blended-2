@@ -2,6 +2,8 @@ import { Component } from 'react';
 
 import * as ImageService from 'service/image-service';
 import { Button, SearchForm, Grid, GridItem, Text, CardItem } from 'components';
+import { Loader } from 'components/Loader/Loader';
+import { Modal } from 'components/Modal/Modal';
 
 export class Gallery extends Component {
   state = {
@@ -11,6 +13,8 @@ export class Gallery extends Component {
     isEmpty: false,
     isLoadMore: false,
     error: null,
+    isLoading: false,
+    src: '',
   };
 
   async componentDidUpdate(prevProps, prevState) {
@@ -18,15 +22,16 @@ export class Gallery extends Component {
     const prevQuery = prevState.query;
     const prevPage = prevState.page;
 
-    if (prevQuery == query && prevPage === page) {
+    if (prevQuery === query && prevPage === page) {
       return;
     }
-
+    this.setState({ isLoading: true });
     try {
       const { photos, total_results } = await ImageService.getImages(
         query,
         page
       );
+
       if (!total_results) {
         this.setState({ isEmpty: true });
         return;
@@ -37,6 +42,8 @@ export class Gallery extends Component {
       }));
     } catch (error) {
       this.setState({ error: error.message });
+    } finally {
+      this.setState({ isLoading: false });
     }
   }
 
@@ -48,8 +55,12 @@ export class Gallery extends Component {
     this.setState(prevState => ({ page: prevState.page + 1 }));
   };
 
+  openModal = src => {
+    this.setState({ src });
+  };
+
   render() {
-    const { images, page, isEmpty, isLoadMore, error } = this.state;
+    const { images, isEmpty, isLoadMore, error, isLoading, src } = this.state;
 
     return (
       <>
@@ -58,7 +69,13 @@ export class Gallery extends Component {
           {images.map(({ id, avg_color, alt, src }) => (
             <GridItem key={id}>
               <CardItem color={avg_color}>
-                <img src={src.large} alt={alt} />
+                <img
+                  src={src.large}
+                  alt={alt}
+                  onClick={() => {
+                    this.openModal(src.large);
+                  }}
+                />
               </CardItem>
             </GridItem>
           ))}
@@ -68,6 +85,8 @@ export class Gallery extends Component {
         )}
         {error && <Text textAlign="center">{error}😭</Text>}
         {isLoadMore && <Button onClick={this.handleClick}>Load more</Button>}
+        {isLoading && <Loader />}
+        {src && <Modal src={src} onClose={this.openModal} />}
       </>
     );
   }
