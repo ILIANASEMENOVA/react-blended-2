@@ -4,7 +4,7 @@ export const Overlay = styled.div`
   position: fixed;
   left: 0;
   top: 0;
-  width: 100vh;
+  width: 100vw;
   height: 100vh;
   background-color: rgba(0, 0, 0, 0.6);
   display: flex;
