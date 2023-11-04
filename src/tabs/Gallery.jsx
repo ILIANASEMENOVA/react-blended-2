@@ -9,6 +9,8 @@ export class Gallery extends Component {
     images: [],
     page: 1,
     isEmpty: false,
+    isLoadMore: false,
+    error: null,
   };
 
   async componentDidUpdate(prevProps, prevState) {
@@ -20,21 +22,34 @@ export class Gallery extends Component {
       return;
     }
 
-    const { photos, total_results } = await ImageService.getImages(query, page);
-    if (!total_results) {
-      this.setState({ isEmpty: true });
-      return;
+    try {
+      const { photos, total_results } = await ImageService.getImages(
+        query,
+        page
+      );
+      if (!total_results) {
+        this.setState({ isEmpty: true });
+        return;
+      }
+      this.setState(prevState => ({
+        images: [...prevState.images, ...photos],
+        isLoadMore: page < Math.ceil(total_results / 15),
+      }));
+    } catch (error) {
+      this.setState({ error: error.message });
     }
-
-    this.setState(prevState => ({ images: [...prevState.images, ...photos] }));
   }
 
   handleSubmit = query => {
     this.setState({ query, images: [], page: 1, isEmpty: false });
   };
 
+  handleClick = () => {
+    this.setState(prevState => ({ page: prevState.page + 1 }));
+  };
+
   render() {
-    const { images, page, isEmpty } = this.state;
+    const { images, page, isEmpty, isLoadMore, error } = this.state;
 
     return (
       <>
@@ -51,6 +66,8 @@ export class Gallery extends Component {
         {isEmpty && (
           <Text textAlign="center">Sorry. There are no images ... 😭</Text>
         )}
+        {error && <Text textAlign="center">{error}😭</Text>}
+        {isLoadMore && <Button onClick={this.handleClick}>Load more</Button>}
       </>
     );
   }
